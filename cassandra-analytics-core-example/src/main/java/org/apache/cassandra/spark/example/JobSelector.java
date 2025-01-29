@@ -49,6 +49,10 @@ public final class JobSelector
             System.arraycopy(args, 1, newArgs, 0, newArgs.length);
             LocalS3WriteAndReadJob.main(newArgs);
         }
+        else if (jobClassName.equalsIgnoreCase(CosTestJob.class.getSimpleName()))
+        {
+            CosTestJob.main(args);
+        }
         else
         {
             System.err.println("Unknown job class named supplied. ClassName: " + jobClassName);
