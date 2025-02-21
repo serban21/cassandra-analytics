@@ -51,7 +51,9 @@ public final class JobSelector
         }
         else if (jobClassName.equalsIgnoreCase(CosTestJob.class.getSimpleName()))
         {
-            CosTestJob.main(args);
+            String[] newArgs = new String[args.length - 1];
+            System.arraycopy(args, 1, newArgs, 0, newArgs.length);
+            CosTestJob.main(newArgs);
         }
         else
         {

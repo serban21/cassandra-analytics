@@ -55,8 +55,18 @@ public class CosTestJob
     {
         logger.info("Starting CoS test Spark job with args={}", Arrays.toString(args));
 
-        SparkConf sparkConf = new SparkConf().setAppName("Sample Spark Cassandra Bulk Reader Job")
-                .set("spark.master", "local[8]");
+        boolean local = false;
+        if (args.length > 0)
+        {
+            local = args[0] == "local";
+        }
+
+        SparkConf sparkConf = new SparkConf().setAppName("Sample Spark Cassandra Bulk Reader Job");
+        if (local)
+        {
+            sparkConf.set("spark.master", "local[8]");
+        }
+
         BulkSparkConf.setupSparkConf(sparkConf, true);
         KryoRegister.setup(sparkConf);
 
@@ -75,7 +85,14 @@ public class CosTestJob
         Map<String, String> readerOptions = new HashMap<>();
         readerOptions.put("sidecar_contact_points", "10.218.164.91,10.218.164.184,10.218.164.243");
         readerOptions.put("keyspace", "cos_primary_shard_va6_dev_01");
-        readerOptions.put("table", "components");
+        if (args.length > 1)
+        {
+            readerOptions.put("table", args[1]);
+        }
+        else
+        {
+            readerOptions.put("table", "components");
+        }
         readerOptions.put("DC", "us-east-1");
         readerOptions.put("snapshotName", UUID.randomUUID().toString());
         readerOptions.put("createSnapshot", "true");
@@ -92,7 +109,10 @@ public class CosTestJob
             logger.info("Found {} records", count);
             System.out.println("Found " + count + " records in " + readerOptions.get("table"));
 
-            //        df.csv("/var/lib/cassandra/" + configuration.readOptions.get("table") + ".csv");
+//            df.write().option("compression", "gzip").csv("/var/lib/cassandra/" + configuration.readOptions.get("table") + ".csv");
+            // .save("s3a://dcx-cassandra-db-backup-va6c2-dev/export")
+            // https://spark.apache.org/docs/3.5.3/cloud-integration.html
+
             logger.info("Finished Spark job, shutting down...");
             sc.stop();
         }
