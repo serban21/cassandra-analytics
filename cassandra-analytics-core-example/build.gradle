@@ -20,6 +20,7 @@
 plugins {
     id 'java'
     id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 repositories {
@@ -58,4 +59,8 @@ application {
                                  "--add-opens", "java.base/jdk.internal.util.jar=ALL-UNNAMED",
                                  "--add-opens", "jdk.management/com.sun.management.internal=ALL-UNNAMED"]
 
+}
+
+shadowJar {
+    zip64 true
 }
