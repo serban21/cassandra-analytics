@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Arrays;
+import java.io.File;
+import java.io.FileInputStream;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -39,10 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import org.yaml.snakeyaml.Yaml;
 
-/**
- * A sample cassandra spark job that writes directly to Cassandra via Sidecar,
- * then reads from Cassandra
- */
+
 public class CosTestJob
 {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -57,19 +56,19 @@ public class CosTestJob
     {
         logger.info("Starting CoS test Spark job with args={}", Arrays.toString(args));
 
-        String fileName = "cassandra-analytics.yaml"
+        String fileName = "cassandra-analytics.yaml";
         if (args.length > 0)
         {
             fileName = args[0];
         }
-        File file = new file(fileName);
+        File file = new File(fileName);
 
         FileInputStream input = new FileInputStream(file);
         Yaml yaml = new Yaml();
-        Map<String, Object> config = yaml.load(input);
+        JobConfig config = yaml.loadAs(input, JobConfig.class);
 
         SparkConf sparkConf = new SparkConf().setAppName("Sample Spark Cassandra Bulk Reader Job");
-        if (config.getOrDefault("local", "remote").equals("local"))
+        if (config.getLocal())
         {
             sparkConf.set("spark.master", "local[8]");
         }
@@ -91,8 +90,8 @@ public class CosTestJob
         int numCores = coresPerExecutor * numExecutors;
         Map<String, String> readerOptions = new HashMap<>();
         readerOptions.put("sidecar_contact_points", "10.218.164.91,10.218.164.184,10.218.164.243");
-        readerOptions.put("keyspace", config.getOrDefault("keyspace", "cos_primary_shard_va6_dev_01");
-        readerOptions.put("table", config.getOrDefault("table", "components"));
+        readerOptions.put("keyspace", config.getKeySpace());
+        readerOptions.put("table", config.getTable());
         readerOptions.put("DC", "us-east-1");
         readerOptions.put("snapshotName", UUID.randomUUID().toString());
         readerOptions.put("createSnapshot", "true");
@@ -105,7 +104,7 @@ public class CosTestJob
             DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
             reader.options(readerOptions);
             Dataset<Row> df = reader.load();
-            if (config.getOrDefault("operation", "count").equals("count"))
+            if (config.getOperation().equals("count"))
             {
                 long count = df.count();
                 logger.info("Found {} records", count);
@@ -113,7 +112,7 @@ public class CosTestJob
             } else
             {
                 logger.info("Export {} .....", readerOptions.get("table"));
-                String csvLocation = config.getOrDefault("location", "/var/aws/") + readerOptions.get("table") + ".csv";
+                String csvLocation = config.getLocation() + readerOptions.get("table") + ".csv";
                 df.write().option("compression", "gzip").csv(csvLocation);
 //                 .save("s3a://dcx-cassandra-db-backup-va6c2-dev/export")
 //                 https://spark.apache.org/docs/3.5.3/cloud-integration.html
