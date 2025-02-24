@@ -19,6 +19,8 @@
 
 package org.apache.cassandra.spark.example;
 
+import java.util.Arrays;
+
 public final class JobSelector
 {
     private JobSelector()
@@ -28,8 +30,9 @@ public final class JobSelector
 
     public static void main(String[] args)
     {
+        System.out.println("Starting CoS test Spark job with args=" + Arrays.toString(args));
         String jobClassName = "DirectCassandraWriteJob";
-        if (args.length != 1)
+        if (args.length == 0)
         {
             System.out.println("Invalid number of arguments supplied. Fall back to run " + jobClassName);
         }
