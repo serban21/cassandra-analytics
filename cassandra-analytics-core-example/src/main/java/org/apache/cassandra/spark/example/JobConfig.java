@@ -7,6 +7,7 @@ public class JobConfig {
     private String sidecarContactPoints;
     private String operation;
     private String location;
+    private String dc;
 
     public JobConfig() {
         this.local = true;
@@ -63,6 +64,14 @@ public class JobConfig {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getDc() {
+        return dc;
+    }
+
+    public void setDc(String dc) {
+        this.dc = dc;
     }
 
     public String toString() {
