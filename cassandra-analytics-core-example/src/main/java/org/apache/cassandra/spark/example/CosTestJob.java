@@ -101,7 +101,7 @@ public class CosTestJob
         readerOptions.put("sidecar_contact_points", config.getSidecarContactPoints());
         readerOptions.put("keyspace", config.getKeyspace());
         readerOptions.put("table", config.getTable());
-        readerOptions.put("DC", "us-east-1");
+        readerOptions.put("DC", config.getDc());
         readerOptions.put("snapshotName", UUID.randomUUID().toString());
         readerOptions.put("createSnapshot", "true");
         readerOptions.put("defaultParallelism", String.valueOf(sc.defaultParallelism()));
