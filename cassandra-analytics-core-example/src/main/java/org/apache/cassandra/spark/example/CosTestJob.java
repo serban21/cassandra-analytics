@@ -25,6 +25,7 @@ import java.util.UUID;
 import java.util.Arrays;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -62,8 +63,15 @@ public class CosTestJob
             fileName = args[0];
         }
         File file = new File(fileName);
-
-        FileInputStream input = new FileInputStream(file);
+        FileInputStream input;
+        try {
+            input = new FileInputStream(file);
+        }
+        catch (FileNotFoundException e)
+        {
+            logger.error("file not found: " + fileName, e);
+            return;
+        }
         Yaml yaml = new Yaml();
         JobConfig config = yaml.loadAs(input, JobConfig.class);
 
@@ -82,6 +90,7 @@ public class CosTestJob
                 .getOrCreate();
         SparkContext sc = spark.sparkContext();
         SQLContext sql = spark.sqlContext();
+        logger.info("Job config: " + config.toString());
         logger.info("Spark Conf: " + sparkConf.toDebugString());
 
         int coresPerExecutor = sparkConf.getInt("spark.executor.cores", 1);
@@ -89,8 +98,8 @@ public class CosTestJob
                 sparkConf.getInt("spark.executor.instances", 1));
         int numCores = coresPerExecutor * numExecutors;
         Map<String, String> readerOptions = new HashMap<>();
-        readerOptions.put("sidecar_contact_points", "10.218.164.91,10.218.164.184,10.218.164.243");
-        readerOptions.put("keyspace", config.getKeySpace());
+        readerOptions.put("sidecar_contact_points", config.getSidecarContactPoints());
+        readerOptions.put("keyspace", config.getKeyspace());
         readerOptions.put("table", config.getTable());
         readerOptions.put("DC", "us-east-1");
         readerOptions.put("snapshotName", UUID.randomUUID().toString());
