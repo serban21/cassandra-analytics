@@ -26,12 +26,15 @@ import java.util.Arrays;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.time.LocalDateTime;
+import java.time.DateTimeFormatter;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.cassandra.spark.KryoRegister;
 import org.apache.cassandra.spark.bulkwriter.BulkSparkConf;
 import org.apache.spark.sql.DataFrameReader;
+import org.apache.spark.sql.DataFrameWriter;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.Dataset;
@@ -121,8 +124,17 @@ public class CosTestJob
             } else
             {
                 logger.info("Export {} .....", readerOptions.get("table"));
-                String csvLocation = config.getLocation() + readerOptions.get("table") + ".csv";
-                df.write().option("compression", "gzip").csv(csvLocation);
+                String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+                String csvLocation = config.getLocation() + dateTime + "/" + readerOptions.get("table") + ".csv";
+                DataFrameWriter<Row> dfw = df.write().option("compression", "gzip");
+                if (config.getLocation().startsWith("s3a://"))
+                {
+                    // set committer in /etc/hadoop/conf/mapred-site.xml?
+                    dfw.option("fs.s3a.committer.name", "directory");
+                    dfw.option("fs.s3a.committer.conflict-mode", "replace");
+                }
+
+                dfw.mode("overwrite").csv(csvLocation);
 //                 .save("s3a://dcx-cassandra-db-backup-va6c2-dev/export")
 //                 https://spark.apache.org/docs/3.5.3/cloud-integration.html
             }
