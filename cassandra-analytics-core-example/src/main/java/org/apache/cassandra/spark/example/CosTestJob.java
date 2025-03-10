@@ -27,7 +27,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.time.LocalDateTime;
-import java.time.DateTimeFormatter;
+import java.time.format.DateTimeFormatter;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -78,7 +78,7 @@ public class CosTestJob
         Yaml yaml = new Yaml();
         JobConfig config = yaml.loadAs(input, JobConfig.class);
 
-        SparkConf sparkConf = new SparkConf().setAppName("Sample Spark Cassandra Bulk Reader Job");
+        SparkConf sparkConf = new SparkConf().setAppName("Cassandra-Spark export " + config.getTable());
         if (config.getLocal())
         {
             sparkConf.set("spark.master", "local[8]");
@@ -116,6 +116,13 @@ public class CosTestJob
             DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
             reader.options(readerOptions);
             Dataset<Row> df = reader.load();
+            if (!config.getColumns().equals("*"))
+            {
+                String[] columns = Arrays.stream(config.getColumns().split(","))
+                        .map(s -> s.trim()).filter(s -> !s.isEmpty()).toArray(String[]::new);
+//                df = df.selectExpr(columns);
+                df = df.select(columns);
+            }
             if (config.getOperation().equals("count"))
             {
                 long count = df.count();
@@ -126,17 +133,14 @@ public class CosTestJob
                 logger.info("Export {} .....", readerOptions.get("table"));
                 String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
                 String csvLocation = config.getLocation() + dateTime + "/" + readerOptions.get("table") + ".csv";
-                DataFrameWriter<Row> dfw = df.write().option("compression", "gzip");
+                DataFrameWriter<Row> dfw = df.write();
                 if (config.getLocation().startsWith("s3a://"))
                 {
-                    // set committer in /etc/hadoop/conf/mapred-site.xml?
                     dfw.option("fs.s3a.committer.name", "directory");
                     dfw.option("fs.s3a.committer.conflict-mode", "replace");
                 }
 
-                dfw.mode("overwrite").csv(csvLocation);
-//                 .save("s3a://dcx-cassandra-db-backup-va6c2-dev/export")
-//                 https://spark.apache.org/docs/3.5.3/cloud-integration.html
+                dfw.mode("overwrite").option("compression", "gzip").option("header", "true").csv(csvLocation);
             }
             logger.info("Finished Spark job, shutting down...");
             sc.stop();
