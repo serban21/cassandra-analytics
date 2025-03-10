@@ -8,6 +8,7 @@ public class JobConfig {
     private String operation;
     private String location;
     private String dc;
+    private String columns;
 
     public JobConfig() {
         this.local = true;
@@ -16,6 +17,8 @@ public class JobConfig {
         this.sidecarContactPoints = "";
         this.operation = "count";
         this.location = "/var/aws/";
+        this.dc = "us-east-1";
+        this.columns = "*";
     }
 
     public Boolean getLocal() {
@@ -72,6 +75,14 @@ public class JobConfig {
 
     public void setDc(String dc) {
         this.dc = dc;
+    }
+
+    public String getColumns() {
+        return columns;
+    }
+
+    public void setColumns(String columns) {
+        this.columns = columns;
     }
 
     public String toString() {
