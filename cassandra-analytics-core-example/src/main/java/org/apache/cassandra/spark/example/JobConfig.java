@@ -1,5 +1,8 @@
 package org.apache.cassandra.spark.example;
 
+import java.util.List;
+import java.util.Map;
+
 public class JobConfig {
     private Boolean local;
     private String keyspace;
@@ -9,6 +12,7 @@ public class JobConfig {
     private String location;
     private String dc;
     private String columns;
+    private List<Map<String, String>> jobs;
 
     public JobConfig() {
         this.local = true;
@@ -19,6 +23,7 @@ public class JobConfig {
         this.location = "/var/aws/";
         this.dc = "us-east-1";
         this.columns = "*";
+        this.jobs = new List<Map<String, String>>();
     }
 
     public Boolean getLocal() {
@@ -83,6 +88,14 @@ public class JobConfig {
 
     public void setColumns(String columns) {
         this.columns = columns;
+    }
+
+    public List<Map<String, String>> getJobs() {
+        return jobs;
+    }
+
+    public void setJobs(List<Map<String, String>> jobs) {
+        this.jobs = jobs;
     }
 
     public String toString() {
