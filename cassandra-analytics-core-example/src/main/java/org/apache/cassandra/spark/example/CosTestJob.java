@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -49,6 +51,8 @@ import org.yaml.snakeyaml.Yaml;
 public class CosTestJob
 {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    private Map<String, String> readerOptions = new HashMap<>();
 
     public static void main(String[] args)
     {
@@ -100,10 +104,9 @@ public class CosTestJob
         int numExecutors = sparkConf.getInt("spark.dynamicAllocation.maxExecutors",
                 sparkConf.getInt("spark.executor.instances", 1));
         int numCores = coresPerExecutor * numExecutors;
-        Map<String, String> readerOptions = new HashMap<>();
+//        Map<String, String> readerOptions = new HashMap<>();
         readerOptions.put("sidecar_contact_points", config.getSidecarContactPoints());
-        readerOptions.put("keyspace", config.getKeyspace());
-        readerOptions.put("table", config.getTable());
+
         readerOptions.put("DC", config.getDc());
         readerOptions.put("snapshotName", UUID.randomUUID().toString());
         readerOptions.put("createSnapshot", "true");
@@ -113,36 +116,12 @@ public class CosTestJob
 
         try
         {
-            DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
-            reader.options(readerOptions);
-            Dataset<Row> df = reader.load();
-            if (!config.getColumns().equals("*"))
-            {
-                String[] columns = Arrays.stream(config.getColumns().split(","))
-                        .map(s -> s.trim()).filter(s -> !s.isEmpty()).toArray(String[]::new);
-//                df = df.selectExpr(columns);
-                df = df.select(columns);
+            for (Map<String, String> job : config.getJobs()) {
+                String location = job.getOrDefault("location", config.getLocation());
+                executeJob(job, location);
             }
-            if (config.getOperation().equals("count"))
-            {
-                long count = df.count();
-                logger.info("Found {} records", count);
-                System.out.println("Found " + count + " records in " + readerOptions.get("table"));
-            } else
-            {
-                logger.info("Export {} .....", readerOptions.get("table"));
-                String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-                String csvLocation = config.getLocation() + dateTime + "/" + readerOptions.get("table") + ".csv";
-                DataFrameWriter<Row> dfw = df.write();
-                if (config.getLocation().startsWith("s3a://"))
-                {
-                    dfw.option("fs.s3a.committer.name", "directory");
-                    dfw.option("fs.s3a.committer.conflict-mode", "replace");
-                }
 
-                dfw.mode("overwrite").option("compression", "gzip").option("header", "true").csv(csvLocation);
-            }
-            logger.info("Finished Spark job, shutting down...");
+            logger.info("Finished all Spark jobs, shutting down...");
             sc.stop();
         }
         catch (Throwable throwable)
@@ -157,5 +136,46 @@ public class CosTestJob
             }
         }
 
+    }
+
+    private void executeJob(Map<String, String> job, String location)
+    {
+        readerOptions.put("keyspace", job.get("keyspace"));
+        readerOptions.put("table", job.get("table"));
+
+        DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
+        reader.options(readerOptions);
+        Dataset<Row> df = reader.load();
+        if (!job.getOrDefault("columns", "*").equals("*"))
+        {
+            List<String> columns = Arrays.stream(job.get("columns").split(","))
+                    .map(s -> s.trim()).filter(s -> !s.isEmpty()).collect(Collectors.toList());;
+            String firstColumn = columns.get(0);
+            columns.remove(0);
+            df = df.select(firstColumn, columns.toArray(new String[0]));
+        }
+
+        logger.info("Starting Spark job " + job.getOperation() + " on " + readerOptions.get("table"));
+
+        if (job.getOperation().equals("count"))
+        {
+            long count = df.count();
+            logger.info("Found {} records", count);
+            System.out.println("Found " + count + " records in " + readerOptions.get("table"));
+        } else
+        {
+            logger.info("Export to {} .....", readerOptions.get("table"));
+            String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+            String csvLocation = location + dateTime + "/" + readerOptions.get("table") + ".csv";
+            DataFrameWriter<Row> dfw = df.write();
+            if (location.startsWith("s3a://"))
+            {
+                dfw.option("fs.s3a.committer.name", "directory");
+                dfw.option("fs.s3a.committer.conflict-mode", "replace");
+            }
+
+            dfw.mode("overwrite").option("compression", "gzip").option("header", "true").csv(csvLocation);
+        }
+        logger.info("Finished Spark job, shutting down...");
     }
 }
