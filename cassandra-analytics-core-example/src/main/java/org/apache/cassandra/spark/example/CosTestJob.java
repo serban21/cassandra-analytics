@@ -155,18 +155,18 @@ public class CosTestJob
             df = df.select(firstColumn, columns.toArray(new String[0]));
         }
 
-        logger.info("Starting Spark job " + job["operation"] + " on " + job["table"]);
+        logger.info("Starting Spark job " + job.get("operation") + " on " + job.get("table"));
 
-        if (job["operation"].equals("count"))
+        if (job.get("operation").equals("count"))
         {
             long count = df.count();
             logger.info("Found {} records", count);
-            System.out.println("Found " + count + " records in " + job["table"]);
+            System.out.println("Found " + count + " records in " + job.get("table"));
         } else
         {
-            logger.info("Export to {} .....", job["table"]);
+            logger.info("Export to {} .....", job.get("table"));
             String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-            String csvLocation = location + dateTime + "/" + job["table"] + ".csv";
+            String csvLocation = location + dateTime + "/" + job.get("table") + ".csv";
             DataFrameWriter<Row> dfw = df.write();
             if (location.startsWith("s3a://"))
             {

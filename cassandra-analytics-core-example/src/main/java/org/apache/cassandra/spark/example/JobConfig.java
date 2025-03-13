@@ -1,6 +1,7 @@
 package org.apache.cassandra.spark.example;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class JobConfig {
@@ -23,7 +24,7 @@ public class JobConfig {
         this.location = "/var/aws/";
         this.dc = "us-east-1";
         this.columns = "*";
-        this.jobs = new List<Map<String, String>>();
+        this.jobs = new ArrayList<Map<String, String>>();
     }
 
     public Boolean getLocal() {
