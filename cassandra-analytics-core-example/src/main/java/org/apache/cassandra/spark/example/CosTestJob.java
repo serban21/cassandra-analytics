@@ -117,8 +117,10 @@ public class CosTestJob
         try
         {
             for (Map<String, String> job : config.getJobs()) {
-                String location = job.getOrDefault("location", config.getLocation());
-                executeJob(sql, job, location);
+                job.putIfAbsent("keyspace", config.getKeyspace());
+                job.putIfAbsent("location", config.getLocation());
+                job.putIfAbsent("operation", config.getOperation());
+                executeJob(sql, job);
             }
 
             logger.info("Finished all Spark jobs, shutting down...");
@@ -138,8 +140,9 @@ public class CosTestJob
 
     }
 
-    private void executeJob(SQLContext sql, Map<String, String> job, String location)
+    private void executeJob(SQLContext sql, Map<String, String> job)
     {
+        String location = job.get("location");
         readerOptions.put("keyspace", job.get("keyspace"));
         readerOptions.put("table", job.get("table"));
 
