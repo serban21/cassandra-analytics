@@ -118,7 +118,7 @@ public class CosTestJob
         {
             for (Map<String, String> job : config.getJobs()) {
                 String location = job.getOrDefault("location", config.getLocation());
-                executeJob(job, location);
+                executeJob(sql, job, location);
             }
 
             logger.info("Finished all Spark jobs, shutting down...");
@@ -138,7 +138,7 @@ public class CosTestJob
 
     }
 
-    private void executeJob(Map<String, String> job, String location)
+    private void executeJob(SQLContext sql, Map<String, String> job, String location)
     {
         readerOptions.put("keyspace", job.get("keyspace"));
         readerOptions.put("table", job.get("table"));
@@ -155,18 +155,18 @@ public class CosTestJob
             df = df.select(firstColumn, columns.toArray(new String[0]));
         }
 
-        logger.info("Starting Spark job " + job.getOperation() + " on " + readerOptions.get("table"));
+        logger.info("Starting Spark job " + job["operation"] + " on " + job["table"]);
 
-        if (job.getOperation().equals("count"))
+        if (job["operation"].equals("count"))
         {
             long count = df.count();
             logger.info("Found {} records", count);
-            System.out.println("Found " + count + " records in " + readerOptions.get("table"));
+            System.out.println("Found " + count + " records in " + job["table"]);
         } else
         {
-            logger.info("Export to {} .....", readerOptions.get("table"));
+            logger.info("Export to {} .....", job["table"]);
             String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-            String csvLocation = location + dateTime + "/" + readerOptions.get("table") + ".csv";
+            String csvLocation = location + dateTime + "/" + job["table"] + ".csv";
             DataFrameWriter<Row> dfw = df.write();
             if (location.startsWith("s3a://"))
             {
