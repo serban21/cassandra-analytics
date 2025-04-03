@@ -116,11 +116,12 @@ public class CosTestJob
 
         try
         {
+            String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
             for (Map<String, String> job : config.getJobs()) {
                 job.putIfAbsent("keyspace", config.getKeyspace());
                 job.putIfAbsent("location", config.getLocation());
                 job.putIfAbsent("operation", config.getOperation());
-                executeJob(sql, job);
+                executeJob(sql, job, job.get("location"), dateTime);
             }
 
             logger.info("Finished all Spark jobs, shutting down...");
@@ -140,7 +141,7 @@ public class CosTestJob
 
     }
 
-    private void executeJob(SQLContext sql, Map<String, String> job)
+    private void executeJob(SQLContext sql, Map<String, String> job, String csvLocation, String timestamp)
     {
         String location = job.get("location");
         readerOptions.put("keyspace", job.get("keyspace"));
@@ -168,8 +169,7 @@ public class CosTestJob
         } else
         {
             logger.info("Export to {} .....", job.get("table"));
-            String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-            String csvLocation = location + dateTime + "/" + job.get("table") + ".csv";
+            String csvTableLocation = csvLocation + job.get("table") + ".csv" + '/' + timestamp;
             DataFrameWriter<Row> dfw = df.write();
             if (location.startsWith("s3a://"))
             {
@@ -177,8 +177,8 @@ public class CosTestJob
                 dfw.option("fs.s3a.committer.conflict-mode", "replace");
             }
 
-            dfw.mode("overwrite").option("compression", "gzip").option("header", "true").csv(csvLocation);
+            dfw.mode("overwrite").option("compression", "gzip").option("header", "true").csv(csvTableLocation);
         }
-        logger.info("Finished Spark job, shutting down...");
+        logger.info("Finished Spark job " + readerOptions.get("table") + " shutting down...");
     }
 }
