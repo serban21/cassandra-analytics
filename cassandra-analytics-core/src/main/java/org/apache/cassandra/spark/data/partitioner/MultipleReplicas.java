@@ -101,8 +101,8 @@ public class MultipleReplicas extends SSTablesSupplier
             LOGGER.info("Not enough replicas");
             for(SingleReplica r : primaryReplicas)
             {
-                LOGGER.info("Replica node={} token={} ip={}",
-                            r.instance().nodeName(), r.instance().token(), r.instance().ipAddress());
+                LOGGER.info("Replica node={} token={}",
+                            r.instance().nodeName(), r.instance().token());
             }
             throw new NotEnoughReplicasException(String.format("Required %d replicas but only %d responded",
                                                                primaryReplicas.size(), count.get()));
