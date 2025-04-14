@@ -102,6 +102,4 @@ public class JobConfig {
     public String toString() {
         return "JobConfig(local=" + this.getLocal() + ", keyspace=" + this.getKeyspace() + ", table=" + this.getTable() + ", sidecarContactPoints=" + this.getSidecarContactPoints() + ", operation=" + this.getOperation() + ", location=" + this.getLocation() + ")";
     }
-
-
 }
