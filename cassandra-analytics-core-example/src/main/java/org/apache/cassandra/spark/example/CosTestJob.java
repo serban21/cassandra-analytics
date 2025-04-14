@@ -82,7 +82,7 @@ public class CosTestJob
         Yaml yaml = new Yaml();
         JobConfig config = yaml.loadAs(input, JobConfig.class);
 
-        SparkConf sparkConf = new SparkConf().setAppName("Cassandra-Spark export " + config.getTable());
+        SparkConf sparkConf = new SparkConf().setAppName("Cassandra-Spark export");
         if (config.getLocal())
         {
             sparkConf.set("spark.master", "local[8]");
