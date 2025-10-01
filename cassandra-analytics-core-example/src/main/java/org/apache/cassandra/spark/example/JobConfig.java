@@ -32,7 +32,10 @@ public class JobConfig {
     private String location;
     private String dc;
     private String columns;
+    private String bucket;
+    private String path;
     private List<Map<String, String>> jobs;
+    private List<Map<String, String>> steps;
 
     public JobConfig() {
         this.local = true;
@@ -44,6 +47,9 @@ public class JobConfig {
         this.dc = "us-east-1";
         this.columns = "*";
         this.jobs = new ArrayList<Map<String, String>>();
+        this.steps = new ArrayList<Map<String, String>>();
+        this.bucket = "";
+        this.prefix = "";
     }
 
     public Boolean getLocal() {
@@ -110,11 +116,27 @@ public class JobConfig {
         this.columns = columns;
     }
 
+    public String getBucket() {
+        return bucket;
+    }
+
+    public void setBucket(String bucket) {
+        this.bucket = bucket;
+    }
+
+    public String getPrefix() { return prefix; }
+
+    public void setPrefix(String prefix) { this.prefix = prefix; }
+
     public List<Map<String, String>> getJobs() {
         return jobs;
     }
 
-    public void setJobs(List<Map<String, String>> jobs) {
+    public List<Map<String, String>> getSteps() {
+        return jobs;
+    }
+
+    public void setSteps(List<Map<String, String>> jobs) {
         this.jobs = jobs;
     }
 
