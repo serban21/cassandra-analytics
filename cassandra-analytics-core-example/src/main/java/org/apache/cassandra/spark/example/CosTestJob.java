@@ -193,7 +193,7 @@ public class CosTestJob
                     break;
                 case "csv":
                     dfw.option("header", "true").csv(tableLocation);
-                    break
+                    break;
                 default:
                     logger.error("Unknown format " + job.get("format") + " for table " + job.get("table"));
                     break;
