@@ -72,7 +72,7 @@ public class CosTestJob
         File file = new File(fileName);
         FileInputStream input;
         try {
-            input = new FileInputStream(file);
+            input = getClass().getResourceAsStream(fileName);
         }
         catch (FileNotFoundException e)
         {
@@ -104,11 +104,11 @@ public class CosTestJob
         int numExecutors = sparkConf.getInt("spark.dynamicAllocation.maxExecutors",
                 sparkConf.getInt("spark.executor.instances", 1));
         int numCores = coresPerExecutor * numExecutors;
-//        Map<String, String> readerOptions = new HashMap<>();
         readerOptions.put("sidecar_contact_points", config.getSidecarContactPoints());
 
         readerOptions.put("DC", config.getDc());
-        readerOptions.put("snapshotName", UUID.randomUUID().toString());
+        String snapshotName = UUID.randomUUID().toString();
+        readerOptions.put("snapshotName", snapshotName);
         readerOptions.put("createSnapshot", "true");
         readerOptions.put("defaultParallelism", String.valueOf(sc.defaultParallelism()));
         readerOptions.put("numCores", String.valueOf(numCores));
@@ -116,12 +116,22 @@ public class CosTestJob
 
         try
         {
+            String location = "s3a://" + config.getBucket() + "/" + config.getPrefix();
             String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-            for (Map<String, String> job : config.getJobs()) {
-                job.putIfAbsent("keyspace", config.getKeyspace());
-                job.putIfAbsent("location", config.getLocation());
-                job.putIfAbsent("operation", config.getOperation());
-                executeJob(sql, job, job.get("location"), dateTime);
+            for (Map<String, String> step : config.getSteps()) {
+                step.putIfAbsent("keyspace", config.getKeyspace());
+                for (Map<String, String> job : config.getJobs())
+                {
+                    if (job.get("name").equals(step.get("job_name")))
+                    {
+                        step.putIfAbsent("table", job.get("table"));
+                        step.putIfAbsent("format", job.get("format"));
+                        step.putIfAbsent("operation", job.get("operation"));
+                        step.putIfAbsent("columns", job.getOrDefault("columns", "*"));
+                        break;
+                    }
+                }
+                executeJob(sql, step, location, dateTime);
             }
 
             logger.info("Finished all Spark jobs, shutting down...");
@@ -141,9 +151,8 @@ public class CosTestJob
 
     }
 
-    private void executeJob(SQLContext sql, Map<String, String> job, String csvLocation, String timestamp)
+    private void executeJob(SQLContext sql, Map<String, String> job, String location, String timestamp)
     {
-        String location = job.get("location");
         readerOptions.put("keyspace", job.get("keyspace"));
         readerOptions.put("table", job.get("table"));
 
@@ -169,15 +178,26 @@ public class CosTestJob
         } else
         {
             logger.info("Export to {} .....", job.get("table"));
-            String csvTableLocation = csvLocation + job.get("table") + ".csv" + '/' + timestamp;
+            String tableLocation = location + job.get("table") + "." + job.get("format") + '/' + timestamp;
             DataFrameWriter<Row> dfw = df.write();
             if (location.startsWith("s3a://"))
             {
                 dfw.option("fs.s3a.committer.name", "directory");
                 dfw.option("fs.s3a.committer.conflict-mode", "replace");
             }
-
-            dfw.mode("overwrite").option("compression", "gzip").option("header", "true").csv(csvTableLocation);
+            dfw.mode("overwrite").option("compression", "gzip");
+            switch (job.get("format"))
+            {
+                case "parquet":
+                    dfw.parquet(tableLocation);
+                    break;
+                case "csv":
+                    dfw.option("header", "true").csv(tableLocation);
+                    break
+                default:
+                    logger.error("Unknown format " + job.get("format") + " for table " + job.get("table"));
+                    break;
+            }
         }
         logger.info("Finished Spark job " + readerOptions.get("table") + " shutting down...");
     }
