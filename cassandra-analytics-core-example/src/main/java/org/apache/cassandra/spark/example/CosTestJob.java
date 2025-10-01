@@ -69,10 +69,8 @@ public class CosTestJob
         {
             fileName = args[0];
         }
-        File file = new File(fileName);
-        FileInputStream input;
         try {
-            input = getClass().getResourceAsStream(fileName);
+            InputStream input = getClass().getResourceAsStream(fileName);
         }
         catch (FileNotFoundException e)
         {
