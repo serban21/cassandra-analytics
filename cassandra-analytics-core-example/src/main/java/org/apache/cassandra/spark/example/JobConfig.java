@@ -33,7 +33,7 @@ public class JobConfig {
     private String dc;
     private String columns;
     private String bucket;
-    private String path;
+    private String prefix;
     private List<Map<String, String>> jobs;
     private List<Map<String, String>> steps;
 
