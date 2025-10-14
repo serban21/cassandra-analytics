@@ -120,13 +120,13 @@ public class ClientConfig
         String clearSnapshotStrategyOption = MapUtils.getOrDefault(options, CLEAR_SNAPSHOT_STRATEGY_KEY, null);
 
         this.clearSnapshotStrategy = parseClearSnapshotStrategy(MapUtils.containsKey(options, CLEAR_SNAPSHOT_KEY),
-                clearSnapshot,
-                clearSnapshotStrategyOption);
+                                                                clearSnapshot,
+                                                                clearSnapshotStrategyOption);
         this.defaultParallelism = MapUtils.getInt(options, DEFAULT_PARALLELISM_KEY, 1);
         this.numCores = MapUtils.getInt(options, NUM_CORES_KEY, 1);
         this.consistencyLevel = Optional.ofNullable(options.get(MapUtils.lowerCaseKey(CONSISTENCY_LEVEL_KEY)))
-                .map(ConsistencyLevel::valueOf)
-                .orElse(null);
+                                        .map(ConsistencyLevel::valueOf)
+                                        .orElse(null);
         this.bigNumberConfigMap = BigNumberConfigImpl.build(options);
         this.enableStats = MapUtils.getBoolean(options, ENABLE_STATS_KEY, true);
         this.readIndexOffset = MapUtils.getBoolean(options, READ_INDEX_OFFSET_KEY, true);
@@ -316,9 +316,9 @@ public class ClientConfig
             if (expectTTL && !hasTTL())
             {
                 throw new IllegalArgumentException("Incorrect value set for clearSnapshotStrategy, expected format " +
-                        "is {strategy [snapshotTTLvalue]}. TTL value specified must " +
-                        "contain unit along. For e.g. 2d represents a TTL for 2 days. " +
-                        "Allowed units are d, h, m and s.");
+                                                   "is {strategy [snapshotTTLvalue]}. TTL value specified must " +
+                                                   "contain unit along. For e.g. 2d represents a TTL for 2 days. " +
+                                                   "Allowed units are d, h, m and s.");
             }
         }
 
@@ -360,8 +360,8 @@ public class ClientConfig
                 if (!Pattern.matches(SNAPSHOT_TTL_PATTERN, snapshotTTL))
                 {
                     String msg = "Incorrect value set for clearSnapshotStrategy, expected format is " +
-                            "{strategy [snapshotTTLvalue]}. TTL value specified must contain unit along. " +
-                            "For e.g. 2d represents a TTL for 2 days. Allowed units are d, h, m and s.";
+                                 "{strategy [snapshotTTLvalue]}. TTL value specified must contain unit along. " +
+                                 "For e.g. 2d represents a TTL for 2 days. Allowed units are d, h, m and s.";
                     throw new IllegalArgumentException(msg);
                 }
             }
@@ -396,7 +396,7 @@ public class ClientConfig
             {
                 ClearSnapshotStrategy defaultStrategy = defaultStrategy();
                 logger.warn("Unknown ClearSnapshotStrategy {} is passed. Fall back to default strategy {}.",
-                        name, defaultStrategy);
+                            name, defaultStrategy);
                 throw new IllegalArgumentException("Invalid ClearSnapshotStrategy " + name + " passed");
             }
         }
@@ -404,8 +404,8 @@ public class ClientConfig
         public static ClearSnapshotStrategy defaultStrategy()
         {
             logger.info("A default TTL value of {} is added to the snapshot. If the job takes longer than {}, " +
-                            "the snapshot will be cleared before job completion leading to errors.",
-                    DEFAULT_SNAPSHOT_TTL_VALUE, DEFAULT_SNAPSHOT_TTL_VALUE);
+                        "the snapshot will be cleared before job completion leading to errors.",
+                        DEFAULT_SNAPSHOT_TTL_VALUE, DEFAULT_SNAPSHOT_TTL_VALUE);
             return new OnCompletionOrTTL(DEFAULT_SNAPSHOT_TTL_VALUE);
         }
 
