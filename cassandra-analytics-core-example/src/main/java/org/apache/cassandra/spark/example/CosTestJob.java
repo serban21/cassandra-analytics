@@ -70,8 +70,10 @@ public class CosTestJob
         {
             fileName = args[0];
         }
+        File file = new File(fileName);
+        FileInputStream input;
         try {
-            InputStream input = getClass().getResourceAsStream(fileName);
+            input = new FileInputStream(file);
         }
         catch (FileNotFoundException e)
         {
@@ -117,7 +119,8 @@ public class CosTestJob
         {
             String location = "s3a://" + config.getBucket() + "/" + config.getPrefix();
             String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-            for (Map<String, String> step : config.getSteps()) {
+            for (Map<String, String> step : config.getSteps())
+            {
                 step.putIfAbsent("keyspace", config.getKeyspace());
                 for (Map<String, String> job : config.getJobs())
                 {
@@ -161,7 +164,7 @@ public class CosTestJob
         if (!job.getOrDefault("columns", "*").equals("*"))
         {
             List<String> columns = Arrays.stream(job.get("columns").split(","))
-                    .map(s -> s.trim()).filter(s -> !s.isEmpty()).collect(Collectors.toList());;
+                    .map(s -> s.trim()).filter(s -> !s.isEmpty()).collect(Collectors.toList());
             String firstColumn = columns.get(0);
             columns.remove(0);
             df = df.select(firstColumn, columns.toArray(new String[0]));
@@ -174,7 +177,8 @@ public class CosTestJob
             long count = df.count();
             logger.info("Found {} records", count);
             System.out.println("Found " + count + " records in " + job.get("table"));
-        } else
+        }
+        else
         {
             logger.info("Export to {} .....", job.get("table"));
             String tableLocation = location + job.get("table") + "." + job.get("format") + '/' + timestamp;

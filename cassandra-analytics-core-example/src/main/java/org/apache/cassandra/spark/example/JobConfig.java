@@ -23,7 +23,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 
-public class JobConfig {
+public class JobConfig
+{
     private Boolean local;
     private String keyspace;
     private String table;
@@ -37,7 +38,8 @@ public class JobConfig {
     private List<Map<String, String>> jobs;
     private List<Map<String, String>> steps;
 
-    public JobConfig() {
+    public JobConfig()
+    {
         this.local = true;
         this.keyspace = "cos_primary_shard_va6_dev_01";
         this.table = "components";
@@ -52,95 +54,130 @@ public class JobConfig {
         this.prefix = "";
     }
 
-    public Boolean getLocal() {
+    public Boolean getLocal()
+    {
         return local;
     }
 
-    public void setLocal(Boolean local) {
+    public void setLocal(Boolean local)
+    {
         this.local = local;
     }
 
-    public String getKeyspace() {
+    public String getKeyspace()
+    {
         return keyspace;
     }
 
-    public void setKeyspace(String keyspace) {
+    public void setKeyspace(String keyspace)
+    {
         this.keyspace = keyspace;
     }
 
-    public String getTable() {
+    public String getTable()
+    {
         return table;
     }
 
-    public void setTable(String table) {
+    public void setTable(String table)
+    {
         this.table = table;
     }
 
-    public String getSidecarContactPoints() {
+    public String getSidecarContactPoints()
+    {
         return sidecarContactPoints;
     }
 
-    public void setSidecarContactPoints(String sidecarContactPoints) {
+    public void setSidecarContactPoints(String sidecarContactPoints)
+    {
         this.sidecarContactPoints = sidecarContactPoints;
     }
 
-    public String getOperation() {
+    public String getOperation()
+    {
         return operation;
     }
 
-    public void setOperation(String operation) {
+    public void setOperation(String operation)
+    {
         this.operation = operation;
     }
 
-    public String getLocation() {
+    public String getLocation()
+    {
         return location;
     }
 
-    public void setLocation(String location) {
+    public void setLocation(String location)
+    {
         this.location = location;
     }
 
-    public String getDc() {
+    public String getDc()
+    {
         return dc;
     }
 
-    public void setDc(String dc) {
+    public void setDc(String dc)
+    {
         this.dc = dc;
     }
 
-    public String getColumns() {
+    public String getColumns()
+    {
         return columns;
     }
 
-    public void setColumns(String columns) {
+    public void setColumns(String columns)
+    {
         this.columns = columns;
     }
 
-    public String getBucket() {
+    public String getBucket()
+    {
         return bucket;
     }
 
-    public void setBucket(String bucket) {
+    public void setBucket(String bucket)
+    {
         this.bucket = bucket;
     }
 
-    public String getPrefix() { return prefix; }
+    public String getPrefix()
+    {
+        return prefix;
+    }
 
-    public void setPrefix(String prefix) { this.prefix = prefix; }
+    public void setPrefix(String prefix)
+    {
+        this.prefix = prefix;
+    }
 
-    public List<Map<String, String>> getJobs() {
+    public List<Map<String, String>> getJobs()
+    {
         return jobs;
     }
 
-    public List<Map<String, String>> getSteps() {
-        return jobs;
-    }
-
-    public void setSteps(List<Map<String, String>> jobs) {
+    public void setJobs(List<Map<String, String>> jobs)
+    {
         this.jobs = jobs;
     }
 
-    public String toString() {
-        return "JobConfig(local=" + this.getLocal() + ", keyspace=" + this.getKeyspace() + ", table=" + this.getTable() + ", sidecarContactPoints=" + this.getSidecarContactPoints() + ", operation=" + this.getOperation() + ", location=" + this.getLocation() + ")";
+    public List<Map<String, String>> getSteps()
+    {
+        return steps;
+    }
+
+    public void setSteps(List<Map<String, String>> steps)
+    {
+        this.steps = steps;
+    }
+
+    public String toString()
+    {
+        return "JobConfig(local=" + this.getLocal() + ", keyspace=" + this.getKeyspace() + ", table=" + this.getTable() +
+               ", sidecarContactPoints=" + this.getSidecarContactPoints() + ", operation=" + this.getOperation() +
+               ", location=" + this.getLocation() + ")";
     }
 }
