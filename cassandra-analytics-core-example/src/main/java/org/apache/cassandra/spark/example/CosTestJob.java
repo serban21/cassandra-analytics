@@ -30,7 +30,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.io.InputStream;
+//import java.io.InputStream;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -72,7 +72,8 @@ public class CosTestJob
         }
         File file = new File(fileName);
         FileInputStream input;
-        try {
+        try
+        {
             input = new FileInputStream(file);
         }
         catch (FileNotFoundException e)
