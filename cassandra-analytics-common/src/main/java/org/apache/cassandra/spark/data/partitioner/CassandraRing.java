@@ -202,13 +202,11 @@ public class CassandraRing implements Serializable
         switch (replicationFactor.getReplicationStrategy())
         {
             case SimpleStrategy:
-                LOGGER.info("Simple Strategy!!!");
                 tokenRangeMap.putAll(RangeUtils.calculateTokenRanges(instances,
                                                                      replicationFactor.getTotalReplicationFactor(),
                                                                      partitioner));
                 break;
             case NetworkTopologyStrategy:
-                LOGGER.info("Network Topology Strategy!!!");
                 for (String dataCenter : dataCenters())
                 {
                     int rf = replicationFactor.getOptions().get(dataCenter);
@@ -222,7 +220,6 @@ public class CassandraRing implements Serializable
                     tokenRangeMap.putAll(RangeUtils.calculateTokenRanges(dcInstances,
                                                                          replicationFactor.getOptions().get(dataCenter),
                                                                          partitioner));
-                    LOGGER.info(tokenRangeMap.toString());
                 }
                 break;
             default:
@@ -232,7 +229,6 @@ public class CassandraRing implements Serializable
         // Calculate token range to replica mapping
         replicas.put(Range.openClosed(partitioner.minToken(), partitioner.maxToken()), Collections.emptyList());
         tokenRangeMap.asMap().forEach((instance, ranges) -> ranges.forEach(range -> addReplica(instance, range, replicas)));
-        LOGGER.info("Replicas: {}", replicas);
     }
 
     public Partitioner partitioner()
