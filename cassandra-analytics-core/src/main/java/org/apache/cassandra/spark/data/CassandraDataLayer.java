@@ -1092,7 +1092,7 @@ public class CassandraDataLayer extends PartitionedDataLayer implements StartupV
         Map<Range<BigInteger>, List<String>> replicas = new HashMap<>();
 
         tokenRangeReplicas.replicaMetadata().forEach((addressAndPort, metadata) -> {
-            fqdnByAddressAndPort.putIfAbsent(addressAndPort, metadata.fqdn());
+            fqdnByAddressAndPort.putIfAbsent(addressAndPort, metadata.address());
         });
 
         tokenRangeReplicas.readReplicas().forEach(replicaInfo -> {
