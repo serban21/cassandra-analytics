@@ -54,6 +54,7 @@ public class CosTestJob
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private Map<String, String> readerOptions = new HashMap<>();
+    private Map<String, String> writerOptions = new HashMap<>();
 
     public static void main(String[] args)
     {
@@ -106,15 +107,7 @@ public class CosTestJob
         int numExecutors = sparkConf.getInt("spark.dynamicAllocation.maxExecutors",
                 sparkConf.getInt("spark.executor.instances", 1));
         int numCores = coresPerExecutor * numExecutors;
-        readerOptions.put("sidecar_contact_points", config.getSidecarContactPoints());
-
-        readerOptions.put("DC", config.getDc());
-        String snapshotName = UUID.randomUUID().toString();
-        readerOptions.put("snapshotName", snapshotName);
-        readerOptions.put("createSnapshot", "true");
-        readerOptions.put("defaultParallelism", String.valueOf(sc.defaultParallelism()));
-        readerOptions.put("numCores", String.valueOf(numCores));
-        readerOptions.put("sizing", "default");
+        initOptions(config, sc, numCores);
 
         try
         {
@@ -154,10 +147,56 @@ public class CosTestJob
 
     }
 
+    private void initOptions(JobConfig config, SparkContext sc, int numCores) {
+        readerOptions.put("sidecar_contact_points", config.getSidecarContactPoints());
+        writerOptions.put("sidecar_contact_points", config.getSidecarContactPoints());
+
+        readerOptions.put("DC", config.getDc());
+        writerOptions.put("DC", config.getDc());
+
+        String snapshotName = UUID.randomUUID().toString();
+        readerOptions.put("snapshotName", snapshotName);
+        readerOptions.put("createSnapshot", "true");
+
+        readerOptions.put("defaultParallelism", String.valueOf(sc.defaultParallelism()));
+        writerOptions.put("defaultParallelism", String.valueOf(sc.defaultParallelism()));
+
+        readerOptions.put("numCores", String.valueOf(numCores));
+        writerOptions.put("numCores", String.valueOf(numCores));
+
+        readerOptions.put("sizing", "default");
+        writerOptions.put("sizing", "default");
+
+        writeOptions.put("bulk_writer_cl", "LOCAL_QUORUM");
+        writeOptions.put("number_splits", "-1"); // what is this?
+    }
+
+    private void executeWriteJob(SQLContext sql, String table, String location)
+    {
+        logger.info("Import data from S3 {} to table {}", import_source, job.get("table"));
+        // define table schemas in yaml (list of <column_name>:<column_type>) and parse it here to build the schema?
+        StructType schema = new StructType()
+                .add("id", LongType, false)
+                .add("course", BinaryType, false)
+                .add("marks", LongType, false);
+
+        // what is the format of the source data?
+        DataFrameReader reader = sql.read().format("parquet").location(import_source); // some .option(..) required here
+        Dataset<Row> df = reader.load();
+
+        DataFrameWriter<Row> writer = df.write().format("org.apache.cassandra.spark.sparksql.CassandraDataSink");
+        writer.options(writeOptions);
+        writer.mode("append").save();
+        // This is it?
+    }
+
     private void executeJob(SQLContext sql, Map<String, String> job, String location, String timestamp)
     {
         readerOptions.put("keyspace", job.get("keyspace"));
+        writerOptions.put("keyspace", job.get("keyspace"));
+
         readerOptions.put("table", job.get("table"));
+        writerOptions.put("table", job.get("table"));
 
         DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
         reader.options(readerOptions);
@@ -173,35 +212,43 @@ public class CosTestJob
 
         logger.info("Starting Spark job " + job.get("operation") + " on " + job.get("table"));
 
-        if (job.get("operation").equals("count"))
+        switch (job.get("operation"))
         {
-            long count = df.count();
-            logger.info("Found {} records", count);
-            System.out.println("Found " + count + " records in " + job.get("table"));
-        }
-        else
-        {
-            logger.info("Export to {} .....", job.get("table"));
-            String tableLocation = location + job.get("table") + "." + job.get("format") + '/' + timestamp;
-            DataFrameWriter<Row> dfw = df.write();
-            if (location.startsWith("s3a://"))
-            {
-                dfw.option("fs.s3a.committer.name", "directory");
-                dfw.option("fs.s3a.committer.conflict-mode", "replace");
-            }
-            dfw.mode("overwrite").option("compression", "gzip");
-            switch (job.get("format"))
-            {
-                case "parquet":
-                    dfw.parquet(tableLocation);
-                    break;
-                case "csv":
-                    dfw.option("header", "true").csv(tableLocation);
-                    break;
-                default:
-                    logger.error("Unknown format " + job.get("format") + " for table " + job.get("table"));
-                    break;
-            }
+            case "count":
+                long count = df.count();
+                logger.info("Found {} records", count);
+                System.out.println("Found " + count + " records in " + job.get("table"));
+                break;
+            case "export":
+                logger.info("Export to {} .....", job.get("table"));
+                String tableLocation = location + job.get("table") + "." + job.get("format") + '/' + timestamp;
+                DataFrameWriter<Row> dfw = df.write();
+                if (location.startsWith("s3a://"))
+                {
+                    dfw.option("fs.s3a.committer.name", "directory");
+                    dfw.option("fs.s3a.committer.conflict-mode", "replace");
+                }
+                dfw.mode("overwrite").option("compression", "gzip");
+                switch (job.get("format"))
+                {
+                    case "parquet":
+                        dfw.parquet(tableLocation);
+                        break;
+                    case "csv":
+                        dfw.option("header", "true").csv(tableLocation);
+                        break;
+                    default:
+                        logger.error("Unknown format " + job.get("format") + " for table " + job.get("table"));
+                        break;
+                }
+                break;
+            case 'import':
+                String import_source = "s3a://" + config.getBucket() + "/" + job.get("import_path");
+                executeWriteJob(sql, job.get("table"), import_source);
+                break;
+            default:
+                logger.error("Unknown operation " + job.get("operation") + " for table " + job.get("table"));
+                return;
         }
         logger.info("Finished Spark job " + readerOptions.get("table") + " shutting down...");
     }
