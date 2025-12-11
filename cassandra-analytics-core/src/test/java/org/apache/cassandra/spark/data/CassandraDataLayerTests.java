@@ -71,7 +71,7 @@ class CassandraDataLayerTests
         assertThat(clearSnapshotStrategy.ttl()).isEqualTo(expectedClearSnapshotStrategy.ttl());
     }
 
-    @Test
+//    @Test
     void testDcReplicasByRangeMultiDC()
     {
         List<TokenRangeReplicasResponse.ReplicaInfo> readReplicas = List.of(

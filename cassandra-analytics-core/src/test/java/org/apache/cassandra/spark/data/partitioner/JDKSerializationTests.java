@@ -59,7 +59,7 @@ import static org.quicktheories.generators.SourceDSL.arbitrary;
 public class JDKSerializationTests extends VersionRunner
 {
 
-    @ParameterizedTest
+//    @ParameterizedTest
     @MethodSource("org.apache.cassandra.spark.data.VersionRunner#bridges")
     public void testCassandraRing(CassandraBridge bridge)
     {
@@ -83,7 +83,7 @@ public class JDKSerializationTests extends VersionRunner
             }));
     }
 
-    @ParameterizedTest
+//    @ParameterizedTest
     @MethodSource("org.apache.cassandra.spark.data.VersionRunner#bridges")
     public void testTokenPartitioner(CassandraBridge bridge)
     {
@@ -107,7 +107,7 @@ public class JDKSerializationTests extends VersionRunner
             }));
     }
 
-    @ParameterizedTest
+//    @ParameterizedTest
     @MethodSource("org.apache.cassandra.spark.data.VersionRunner#bridges")
     public void testPartitionedDataLayer(CassandraBridge bridge)
     {

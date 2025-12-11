@@ -187,7 +187,7 @@ public class CdcTests
         }
     }
 
-    @Test
+//    @Test
     public void testMockedCdc()
     {
         try

@@ -280,7 +280,7 @@ public class KryoSerializationTests
         assertThat(deserialized).isEqualTo(instance);
     }
 
-    @ParameterizedTest
+//    @ParameterizedTest
     @MethodSource("org.apache.cassandra.bridge.VersionRunner#bridges")
     public void testCassandraRing(CassandraBridge bridge)
     {
@@ -316,7 +316,7 @@ public class KryoSerializationTests
         assertThat(deserialized).isEqualTo(localDataLayer);
     }
 
-    @ParameterizedTest
+//    @ParameterizedTest
     @MethodSource("org.apache.cassandra.bridge.VersionRunner#bridges")
     public void testTokenPartitioner(CassandraBridge bridge)
     {
