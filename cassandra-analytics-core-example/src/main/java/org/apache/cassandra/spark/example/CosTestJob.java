@@ -30,18 +30,23 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 //import java.io.InputStream;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.cassandra.spark.KryoRegister;
 import org.apache.cassandra.spark.bulkwriter.BulkSparkConf;
+import org.apache.cassandra.spark.bulkwriter.TTLOption;
+import org.apache.cassandra.spark.bulkwriter.TimestampOption;
+import org.apache.cassandra.spark.bulkwriter.WriterOptions;
 import org.apache.spark.sql.DataFrameReader;
 import org.apache.spark.sql.DataFrameWriter;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.types.StructType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,25 +172,38 @@ public class CosTestJob
         readerOptions.put("sizing", "default");
         writerOptions.put("sizing", "default");
 
-        writeOptions.put("bulk_writer_cl", "LOCAL_QUORUM");
-        writeOptions.put("number_splits", "-1"); // what is this?
+        writerOptions.put("bulk_writer_cl", "ALL");
+        writerOptions.put("number_splits", "-1"); // what is this?
     }
 
     private void executeWriteJob(SQLContext sql, String table, String location)
     {
-        logger.info("Import data from S3 {} to table {}", import_source, job.get("table"));
-        // define table schemas in yaml (list of <column_name>:<column_type>) and parse it here to build the schema?
-        StructType schema = new StructType()
-                .add("id", LongType, false)
-                .add("course", BinaryType, false)
-                .add("marks", LongType, false);
+        // TODO The timestamp is sent ONLY through the SQS messages. It's not present in S3
+        // So, in production we could pass the timestamp as a parameter for the EMR run
+        // Assuming the EMR is run only for one S3 path. Or maybe several if they have the same timestamp
+        // (generated in the same run from Keystone)
+        executeWriteJob(sql, table, location, Instant.now().toEpochMilli());
+    }
 
-        // what is the format of the source data?
-        DataFrameReader reader = sql.read().format("parquet").location(import_source); // some .option(..) required here
-        Dataset<Row> df = reader.load();
+    private void executeWriteJob(SQLContext sql, String table, String location, long timestamp)
+    {
+        logger.info("Import data from S3 {} to table {}", import_source, job.get("table"));
+
+        // should have option("fs.s3a.bucket.<bucket>.endpoint.region", "us-east-1")?
+        DataFrameReader reader = sql.read().option("allowUnquotedFieldNames", "true").option("compression", "gzip")
+                .json(import_source);
+        // test scala df.printSchema()
+        Dataset<Row> df = reader.select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
+                col("rowkey").as("key"),
+                col("exploded_element.key").as("column1"),
+                col("exploded_element.ttl").as("ttl"),
+                col("exploded_element").getField("val").as("value") // Use getField("val") for the reserved keyword
+        );
 
         DataFrameWriter<Row> writer = df.write().format("org.apache.cassandra.spark.sparksql.CassandraDataSink");
-        writer.options(writeOptions);
+        writer.options(writerOptions);
+        writer.option(WriterOptions.TTL.name(), TTLOption.perRow("ttl"));
+        writer.option(WriterOptions.TIMESTAMP.name(), TimestampOption.constant(timestamp));
         writer.mode("append").save();
         // This is it?
     }
@@ -198,16 +216,20 @@ public class CosTestJob
         readerOptions.put("table", job.get("table"));
         writerOptions.put("table", job.get("table"));
 
-        DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
-        reader.options(readerOptions);
-        Dataset<Row> df = reader.load();
-        if (!job.getOrDefault("columns", "*").equals("*"))
+        Dataset<Row> df;
+        if (job.get("operation").equals("export") || job.get("operation").equals("count")
         {
-            List<String> columns = Arrays.stream(job.get("columns").split(","))
-                    .map(s -> s.trim()).filter(s -> !s.isEmpty()).collect(Collectors.toList());
-            String firstColumn = columns.get(0);
-            columns.remove(0);
-            df = df.select(firstColumn, columns.toArray(new String[0]));
+            DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
+            reader.options(readerOptions);
+            df = reader.load();
+            if (!job.getOrDefault("columns", "*").equals("*"))
+            {
+                List<String> columns = Arrays.stream(job.get("columns").split(","))
+                        .map(s -> s.trim()).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+                String firstColumn = columns.get(0);
+                columns.remove(0);
+                df = df.select(firstColumn, columns.toArray(new String[0]));
+            }
         }
 
         logger.info("Starting Spark job " + job.get("operation") + " on " + job.get("table"));
