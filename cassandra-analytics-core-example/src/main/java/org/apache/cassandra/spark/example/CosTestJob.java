@@ -48,9 +48,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
-//import static org.codehaus.commons.compiler.samples.DemoBase.explode;
-
-//import org.yaml.snakeyaml.Yaml;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -61,14 +58,17 @@ public class CosTestJob {
     private Map<String, String> readerOptions = new HashMap<>();
     private Map<String, String> writerOptions = new HashMap<>();
 
+//    private static String import_source = "s3a://aam-s2s-traits-stage-us-east-1/2025.12.11-00.00.02/profilemerge_spp_users_optout/region=7/";
+
+    private static JobConfig config;
+
     public static void main(String[] args) {
         System.setProperty("SKIP_STARTUP_VALIDATIONS", "true");
+        initConfig(args);
         new CosTestJob().start(args);
     }
 
-    public void start(String[] args) {
-        logger.info("Starting CoS test Spark job with args={}", Arrays.toString(args));
-
+    public static void initConfig(String[] args) {
         String fileName = "cassandra-analytics.yaml";
         if (args.length > 0) {
             fileName = args[0];
@@ -77,12 +77,17 @@ public class CosTestJob {
         FileInputStream input;
         try {
             input = new FileInputStream(file);
+            Yaml yaml = new Yaml();
+            if(config != null) {
+                config = yaml.loadAs(input, JobConfig.class);
+            }
         } catch (FileNotFoundException e) {
-            logger.error("file not found: " + fileName, e);
-            return;
+//            logger.error("file not found: " + fileName, e);
         }
-        Yaml yaml = new Yaml();
-        JobConfig config = yaml.loadAs(input, JobConfig.class);
+    }
+
+    public void start(String[] args) {
+        logger.info("Starting CoS test Spark job with args={}", Arrays.toString(args));
 
         SparkConf sparkConf = new SparkConf().setAppName("Cassandra-Spark export");
         if (config.getLocal()) {
@@ -173,57 +178,29 @@ public class CosTestJob {
         return json;
     }
 
-    private void executeWriteJob(SQLContext sql, String table, String location, long timestamp) {
-        DataFrameReader reader = sql.read()
-                .option("allowUnquotedFieldNames", "true")
-                .option("compression", "gzip")
-                .option("multiLine", "true");
 
-        Dataset<Row> rawDf = reader.json(
-                sql.createDataset(List.of(getS3Content()), Encoders.STRING())
-        );
-
-        // ACUM col() și explode() merg perfect
-        Dataset<Row> df = rawDf
-                .select(col("rowkey"), explode(col("cols")).as("c"))
-                .select(
-                        col("rowkey").as("key"),
-                        col("c.key").as("column"),
-                        col("c.ttl").as("ttl"),
-                        col("c.val").as("value")
-                );
-
-        DataFrameWriter<Row> writer = df.write().format("org.apache.cassandra.spark.sparksql.CassandraDataSink");
-        writer.options(writerOptions);
-        writer.option(WriterOptions.TTL.name(), TTLOption.perRow("ttl"));
-        writer.option(WriterOptions.TIMESTAMP.name(), TimestampOption.constant(timestamp));
-        writer.mode("append").save();
-    }
-    /*
     private void executeWriteJob(SQLContext sql, String table, String location, long timestamp)
     {
-        logger.info("Import data from S3 {} to table {}", import_source, job.get("table"));
+//        logger.info("Import data from S3 {} Sto table {}", import_source, job.get("table"));
 
         // should have option("fs.s3a.bucket.<bucket>.endpoint.region", "us-east-1")?
-        DataFrameReader reader = sql.read().option("allowUnquotedFieldNames", "true").option("compression", "gzip")
-                .json(import_source);
-        // test scala df.printSchema()
-
-        Dataset<Row> df = reader.select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
-                col("rowkey").as("key"),
-                col("exploded_element.key").as("column1"),
-                col("exploded_element.ttl").as("ttl"),
-                col("exploded_element").getField("val").as("value") // Use getField("val") for the reserved keyword
-        );
+        Dataset<Row> df = sql.read().option("allowUnquotedFieldNames", "true").option("compression", "gzip")
+                .json(location)
+                .select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
+                        col("rowkey").as("key"),
+                        col("exploded_element.key").as("column1"),
+                        col("exploded_element.ttl").as("ttl"),
+                        col("exploded_element").getField("val").as("value") // Use getField("val") for the reserved keyword
+          );
 
         DataFrameWriter<Row> writer = df.write().format("org.apache.cassandra.spark.sparksql.CassandraDataSink");
         writer.options(writerOptions);
         writer.option(WriterOptions.TTL.name(), TTLOption.perRow("ttl"));
         writer.option(WriterOptions.TIMESTAMP.name(), TimestampOption.constant(timestamp));
         writer.mode("append").save();
-        // This is it?
+
     }
-*/
+
     private void executeJob(SQLContext sql, Map<String, String> job, String location, String timestamp)
     {
         readerOptions.put("keyspace", job.get("keyspace"));
@@ -281,8 +258,8 @@ public class CosTestJob {
                 }
                 break;
             case "import":
-                String import_source = "s3a://aam-s2s-traits-stage-us-east-1/2025.12.11-00.00.02/profilemerge_spp_users_optout/region=7/";
-//                String import_source = "s3a://" + config.getBucket() + "/" + job.get("import_path");
+//                String import_source = "s3a://aam-s2s-traits-stage-us-east-1/2025.12.11-00.00.02/profilemerge_spp_users_optout/region=7/";
+                String import_source = "s3a://" + config.getBucket() + "/" + job.get("import_path");
                 executeWriteJob(sql, job.get("table"), import_source);
 
                 break;
