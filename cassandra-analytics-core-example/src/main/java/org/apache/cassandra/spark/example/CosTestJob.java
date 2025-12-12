@@ -21,6 +21,7 @@ package org.apache.cassandra.spark.example;
 
 import java.util.HashMap;
 import java.util.Map;
+/*
 import java.util.UUID;
 import java.util.Arrays;
 import java.util.List;
@@ -47,11 +48,11 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.types.StructType;
-
+*/
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.yaml.snakeyaml.Yaml;
+//import org.yaml.snakeyaml.Yaml;
 
 
 public class CosTestJob
@@ -64,9 +65,9 @@ public class CosTestJob
     public static void main(String[] args)
     {
         System.setProperty("SKIP_STARTUP_VALIDATIONS", "true");
-        new CosTestJob().start(args);
+  //      new CosTestJob().start(args);
     }
-
+/*
     public void start(String[] args)
     {
         logger.info("Starting CoS test Spark job with args={}", Arrays.toString(args));
@@ -274,4 +275,6 @@ public class CosTestJob
         }
         logger.info("Finished Spark job " + readerOptions.get("table") + " shutting down...");
     }
+
+ */
 }

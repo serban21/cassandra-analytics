@@ -103,7 +103,7 @@ tasks.register('buildIgnoreRatList', Exec) {
 }
 
 rat {
-
+  excludes.add(".sdkmanrc")
   doFirst {
     def excludeFilePath = ratExcludeFilePath
     def excludeLines = Files.readAllLines(excludeFilePath)

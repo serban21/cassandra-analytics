@@ -65,3 +65,40 @@ application {
 shadowJar {
     zip64 true
 }
+
+tasks.register('fatJar', Jar) {
+    archiveClassifier = 'all'  // Schimbă aici: JAR-ul va fi cassandra-analytics-core-example-0.2-SNAPSHOT-all.jar
+    // Sau: archiveAppendix = 'fat'  // sau orice sufix vrei
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': application.mainClass.get()  // sau 'com.example.ClasaTaCuMain'
+    }
+
+    from(sourceSets.main.output)
+
+    from {
+        configurations.runtimeClasspath.collect { file ->
+            file.isDirectory() ? file : zipTree(file)
+        }
+    }
+}
+
+tasks.named('shadowDistZip') {
+    dependsOn shadowJar  // Face ca shadowDistZip să aștepte shadowJar (fat JAR-ul tău)
+}
+
+tasks.named('shadowDistTar') {
+    dependsOn shadowJar  // La fel pentru Tar
+}
+
+tasks.named('distZip') {
+    dependsOn shadowJar
+}
+
+tasks.named('distTar') {
+    dependsOn shadowJar
+}
+
+tasks.named('build') {
+    dependsOn shadowJar
+}
