@@ -300,6 +300,7 @@ public class CassandraDataLayer extends PartitionedDataLayer implements StartupV
         validateReplicationFactor(replicationFactor);
         udts.forEach(udt -> LOGGER.info("Adding schema UDT: '{}'", udt));
 
+        keyspace.replaceAll("\"", "");
         cqlTable = bridge().buildSchema(createStmt, keyspace, replicationFactor, partitioner, udts, null, indexCount, false);
 
         CompletableFuture<TokenRangeReplicasResponse> tokenRangeReplicasFuture = sidecar.tokenRangeReplicas(
