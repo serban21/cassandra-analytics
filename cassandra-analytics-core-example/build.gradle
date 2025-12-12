@@ -102,3 +102,9 @@ tasks.named('distTar') {
 tasks.named('build') {
     dependsOn shadowJar
 }
+
+checkstyle {
+    // toolVersion = "10.12.0"          // lasă asta
+    ignoreFailures = false              // ← LINIA MAGICĂ
+    maxErrors = 1000                       // sau orice număr mare
+}

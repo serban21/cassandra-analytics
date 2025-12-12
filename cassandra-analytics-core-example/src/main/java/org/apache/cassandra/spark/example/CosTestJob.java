@@ -21,7 +21,7 @@ package org.apache.cassandra.spark.example;
 
 import java.util.HashMap;
 import java.util.Map;
-/*
+
 import java.util.UUID;
 import java.util.Arrays;
 import java.util.List;
@@ -41,50 +41,43 @@ import org.apache.cassandra.spark.bulkwriter.BulkSparkConf;
 import org.apache.cassandra.spark.bulkwriter.TTLOption;
 import org.apache.cassandra.spark.bulkwriter.TimestampOption;
 import org.apache.cassandra.spark.bulkwriter.WriterOptions;
-import org.apache.spark.sql.DataFrameReader;
-import org.apache.spark.sql.DataFrameWriter;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.SQLContext;
-import org.apache.spark.sql.types.StructType;
-*/
+import org.apache.spark.sql.*;
+//import org.apache.spark.sql.types.StructType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
+
+//import static org.codehaus.commons.compiler.samples.DemoBase.explode;
 
 //import org.yaml.snakeyaml.Yaml;
 
+import static org.apache.spark.sql.functions.*;
 
-public class CosTestJob
-{
+
+public class CosTestJob {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private Map<String, String> readerOptions = new HashMap<>();
     private Map<String, String> writerOptions = new HashMap<>();
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
         System.setProperty("SKIP_STARTUP_VALIDATIONS", "true");
-  //      new CosTestJob().start(args);
+        new CosTestJob().start(args);
     }
-/*
-    public void start(String[] args)
-    {
+
+    public void start(String[] args) {
         logger.info("Starting CoS test Spark job with args={}", Arrays.toString(args));
 
         String fileName = "cassandra-analytics.yaml";
-        if (args.length > 0)
-        {
+        if (args.length > 0) {
             fileName = args[0];
         }
         File file = new File(fileName);
         FileInputStream input;
-        try
-        {
+        try {
             input = new FileInputStream(file);
-        }
-        catch (FileNotFoundException e)
-        {
+        } catch (FileNotFoundException e) {
             logger.error("file not found: " + fileName, e);
             return;
         }
@@ -92,8 +85,7 @@ public class CosTestJob
         JobConfig config = yaml.loadAs(input, JobConfig.class);
 
         SparkConf sparkConf = new SparkConf().setAppName("Cassandra-Spark export");
-        if (config.getLocal())
-        {
+        if (config.getLocal()) {
             sparkConf.set("spark.master", "local[8]");
         }
 
@@ -115,17 +107,13 @@ public class CosTestJob
         int numCores = coresPerExecutor * numExecutors;
         initOptions(config, sc, numCores);
 
-        try
-        {
+        try {
             String location = "s3a://" + config.getBucket() + "/" + config.getPrefix();
             String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-            for (Map<String, String> step : config.getSteps())
-            {
+            for (Map<String, String> step : config.getSteps()) {
                 step.putIfAbsent("keyspace", config.getKeyspace());
-                for (Map<String, String> job : config.getJobs())
-                {
-                    if (job.get("name").equals(step.get("job_name")))
-                    {
+                for (Map<String, String> job : config.getJobs()) {
+                    if (job.get("name").equals(step.get("job_name"))) {
                         step.putIfAbsent("table", job.get("table"));
                         step.putIfAbsent("format", job.get("format"));
                         step.putIfAbsent("operation", job.get("operation"));
@@ -138,16 +126,11 @@ public class CosTestJob
 
             logger.info("Finished all Spark jobs, shutting down...");
             sc.stop();
-        }
-        catch (Throwable throwable)
-        {
+        } catch (Throwable throwable) {
             logger.error("Unexpected exception executing Spark job", throwable);
-            try
-            {
+            try {
                 sc.stop();
-            }
-            catch (Throwable ignored)
-            {
+            } catch (Throwable ignored) {
             }
         }
 
@@ -177,8 +160,7 @@ public class CosTestJob
         writerOptions.put("number_splits", "-1"); // what is this?
     }
 
-    private void executeWriteJob(SQLContext sql, String table, String location)
-    {
+    private void executeWriteJob(SQLContext sql, String table, String location) {
         // TODO The timestamp is sent ONLY through the SQS messages. It's not present in S3
         // So, in production we could pass the timestamp as a parameter for the EMR run
         // Assuming the EMR is run only for one S3 path. Or maybe several if they have the same timestamp
@@ -186,6 +168,38 @@ public class CosTestJob
         executeWriteJob(sql, table, location, Instant.now().toEpochMilli());
     }
 
+    private String getS3Content() {
+        String json = "{" + "\"rowkey\":\"01183700193606162565567718189896254252\",\"cols:[{\"key\":\"NOTARGET\",val:\"NDY3Mg==\",\"ttl\":\"0\"}]}";
+        return json;
+    }
+
+    private void executeWriteJob(SQLContext sql, String table, String location, long timestamp) {
+        DataFrameReader reader = sql.read()
+                .option("allowUnquotedFieldNames", "true")
+                .option("compression", "gzip")
+                .option("multiLine", "true");
+
+        Dataset<Row> rawDf = reader.json(
+                sql.createDataset(List.of(getS3Content()), Encoders.STRING())
+        );
+
+        // ACUM col() și explode() merg perfect
+        Dataset<Row> df = rawDf
+                .select(col("rowkey"), explode(col("cols")).as("c"))
+                .select(
+                        col("rowkey").as("key"),
+                        col("c.key").as("column"),
+                        col("c.ttl").as("ttl"),
+                        col("c.val").as("value")
+                );
+
+        DataFrameWriter<Row> writer = df.write().format("org.apache.cassandra.spark.sparksql.CassandraDataSink");
+        writer.options(writerOptions);
+        writer.option(WriterOptions.TTL.name(), TTLOption.perRow("ttl"));
+        writer.option(WriterOptions.TIMESTAMP.name(), TimestampOption.constant(timestamp));
+        writer.mode("append").save();
+    }
+    /*
     private void executeWriteJob(SQLContext sql, String table, String location, long timestamp)
     {
         logger.info("Import data from S3 {} to table {}", import_source, job.get("table"));
@@ -194,6 +208,7 @@ public class CosTestJob
         DataFrameReader reader = sql.read().option("allowUnquotedFieldNames", "true").option("compression", "gzip")
                 .json(import_source);
         // test scala df.printSchema()
+
         Dataset<Row> df = reader.select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
                 col("rowkey").as("key"),
                 col("exploded_element.key").as("column1"),
@@ -208,7 +223,7 @@ public class CosTestJob
         writer.mode("append").save();
         // This is it?
     }
-
+*/
     private void executeJob(SQLContext sql, Map<String, String> job, String location, String timestamp)
     {
         readerOptions.put("keyspace", job.get("keyspace"));
@@ -217,8 +232,8 @@ public class CosTestJob
         readerOptions.put("table", job.get("table"));
         writerOptions.put("table", job.get("table"));
 
-        Dataset<Row> df;
-        if (job.get("operation").equals("export") || job.get("operation").equals("count")
+        Dataset<Row> df = null;
+        if (job.get("operation").equals("export") || job.get("operation").equals("count"))
         {
             DataFrameReader reader = sql.read().format("org.apache.cassandra.spark.sparksql.CassandraDataSource");
             reader.options(readerOptions);
@@ -265,9 +280,11 @@ public class CosTestJob
                         break;
                 }
                 break;
-            case 'import':
-                String import_source = "s3a://" + config.getBucket() + "/" + job.get("import_path");
+            case "import":
+                String import_source = "s3a://aam-s2s-traits-stage-us-east-1/2025.12.11-00.00.02/profilemerge_spp_users_optout/region=7/";
+//                String import_source = "s3a://" + config.getBucket() + "/" + job.get("import_path");
                 executeWriteJob(sql, job.get("table"), import_source);
+
                 break;
             default:
                 logger.error("Unknown operation " + job.get("operation") + " for table " + job.get("table"));
@@ -276,5 +293,4 @@ public class CosTestJob
         logger.info("Finished Spark job " + readerOptions.get("table") + " shutting down...");
     }
 
- */
 }
