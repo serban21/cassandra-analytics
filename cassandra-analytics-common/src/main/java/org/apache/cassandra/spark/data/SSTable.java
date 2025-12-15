@@ -23,8 +23,10 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
-import com.google.common.base.Splitter;
+//import com.google.common.base.Splitter;
 
 import org.apache.cassandra.spark.utils.streaming.CassandraFile;
 import org.jetbrains.annotations.NotNull;
