@@ -76,14 +76,13 @@ public class CosTestJob {
         File file = new File(fileName);
         FileInputStream input;
         try {
-            logger.info("Loading job config from file: " + fileName);
             input = new FileInputStream(file);
             Yaml yaml = new Yaml();
             if (config == null) {
                 config = yaml.loadAs(input, JobConfig.class);
             }
         } catch (FileNotFoundException e) {
-            logger.error("file not found: " + fileName, e);
+//            logger.error("file not found: " + fileName, e);
         }
     }
 
