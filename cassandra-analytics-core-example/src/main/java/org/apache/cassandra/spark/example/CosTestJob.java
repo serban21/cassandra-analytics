@@ -42,6 +42,7 @@ import org.apache.cassandra.spark.bulkwriter.TTLOption;
 import org.apache.cassandra.spark.bulkwriter.TimestampOption;
 import org.apache.cassandra.spark.bulkwriter.WriterOptions;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 //import org.apache.spark.sql.types.StructType;
 
 import org.slf4j.Logger;
@@ -123,6 +124,7 @@ public class CosTestJob {
                         step.putIfAbsent("format", job.get("format"));
                         step.putIfAbsent("operation", job.get("operation"));
                         step.putIfAbsent("columns", job.getOrDefault("columns", "*"));
+                        step.putIfAbsent("import_path", job.getOrDefault("import_path", ""));
                         break;
                     }
                 }
@@ -189,7 +191,7 @@ public class CosTestJob {
                 .select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
                         col("rowkey").as("key"),
                         col("exploded_element.key").as("column1"),
-                        col("exploded_element.ttl").as("ttl"),
+                        col("exploded_element.ttl").cast(DataTypes.IntegerType).as("ttl"),
                         col("exploded_element").getField("val").as("value") // Use getField("val") for the reserved keyword
           );
 
