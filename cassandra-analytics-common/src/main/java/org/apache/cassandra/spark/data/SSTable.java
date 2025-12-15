@@ -41,7 +41,7 @@ public abstract class SSTable implements Serializable, CassandraFile
     public static final long serialVersionUID = 42L;
 
     private static final String FILENAME_SEPARATOR = "-";
-    private static final Splitter filenameSplitter = Splitter.on(FILENAME_SEPARATOR);
+//    private static final Splitter filenameSplitter = Splitter.on(FILENAME_SEPARATOR);
 
     public SSTable()
     {
