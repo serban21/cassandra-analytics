@@ -132,13 +132,23 @@ public abstract class SSTable implements Serializable, CassandraFile
 
     public String getFormat()
     {
-        List<String> tokens = filenameSplitter.splitToList(getDataFileName());
+//        List<String> tokens = filenameSplitter.splitToList(getDataFileName());
+        String fileName = getDataFileName();
+        List<String> tokens = Arrays.stream(fileName.split(FILENAME_SEPARATOR))
+                .map(String::trim)          // Equivalent to .trimResults()
+                .filter(s -> !s.isEmpty())  // Equivalent to .omitEmptyStrings()
+                .collect(Collectors.toList());
         return tokens.get(tokens.size() - 2);
     }
 
     public String getVersion()
     {
-        List<String> tokens = filenameSplitter.splitToList(getDataFileName());
+//        List<String> tokens = filenameSplitter.splitToList(getDataFileName());
+        String fileName = getDataFileName();
+        List<String> tokens = Arrays.stream(fileName.split(FILENAME_SEPARATOR))
+                .map(String::trim)          // Equivalent to .trimResults()
+                .filter(s -> !s.isEmpty())  // Equivalent to .omitEmptyStrings()
+                .collect(Collectors.toList());
         return tokens.get(tokens.size() - 4);
     }
 }
