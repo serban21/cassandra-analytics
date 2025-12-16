@@ -43,7 +43,9 @@ import org.apache.cassandra.spark.bulkwriter.TimestampOption;
 import org.apache.cassandra.spark.bulkwriter.WriterOptions;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
-//import org.apache.spark.sql.types.StructType;
+import static org.apache.spark.sql.functions.*;
+import static org.apache.spark.sql.types.DataTypes.BinaryType;
+import static org.apache.spark.sql.types.DataTypes.IntegerType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,6 +127,9 @@ public class CosTestJob {
                         step.putIfAbsent("operation", job.get("operation"));
                         step.putIfAbsent("columns", job.getOrDefault("columns", "*"));
                         step.putIfAbsent("import_path", job.getOrDefault("import_path", ""));
+                        step.putIfAbsent("allowUnquotedFieldNames", job.getOrDefault("allowUnquotedFieldNames", "false"));
+                        step.putIfAbsent("bulk_writer_cl", job.getOrDefault("bulk_writer_cl", ""));
+                        step.putIfAbsent("binary", job.getOrDefault("binary", "false"));
                         break;
                     }
                 }
@@ -163,16 +168,16 @@ public class CosTestJob {
         readerOptions.put("sizing", "default");
         writerOptions.put("sizing", "default");
 
-        writerOptions.put("bulk_writer_cl", "ALL");
+//        writerOptions.put("bulk_writer_cl", "ALL");
         writerOptions.put("number_splits", "-1"); // what is this?
     }
 
-    private void executeWriteJob(SQLContext sql, String table, String location) {
+    private void executeWriteJob(SQLContext sql, String table, String location, String consistency, String allowUnquotedFieldNames, Boolean binary) {
         // TODO The timestamp is sent ONLY through the SQS messages. It's not present in S3
         // So, in production we could pass the timestamp as a parameter for the EMR run
         // Assuming the EMR is run only for one S3 path. Or maybe several if they have the same timestamp
         // (generated in the same run from Keystone)
-        executeWriteJob(sql, table, location, Instant.now().toEpochMilli());
+        executeWriteJob(sql, table, location, consistency, allowUnquotedFieldNames, Instant.now().toEpochMilli());
     }
 
     private String getS3Content() {
@@ -181,24 +186,37 @@ public class CosTestJob {
     }
 
 
-    private void executeWriteJob(SQLContext sql, String table, String location, long timestamp)
+    private void executeWriteJob(SQLContext sql, String table, String location, String consistency, String allowUnquotedFieldNames, Boolean binary, long timestamp)
     {
 //        logger.info("Import data from S3 {} Sto table {}", import_source, job.get("table"));
 
         // should have option("fs.s3a.bucket.<bucket>.endpoint.region", "us-east-1")?
         Dataset<Row> df = sql.read().option("allowUnquotedFieldNames", "true").option("compression", "gzip")
                 .json(location)
-                .select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
-                        col("rowkey").as("key"),
-                        col("exploded_element.key").as("column1"),
-                        col("exploded_element.ttl").cast(DataTypes.IntegerType).as("ttl"),
-                        col("exploded_element").getField("val").as("value") // Use getField("val") for the reserved keyword
-          );
+        if (binary) {
+            df = df.select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
+                    col("rowkey").cast(BinaryType).as("key"),
+                    col("exploded_element.key").as("column1"),
+                    col("exploded_element.ttl").cast(IntegerType).as("ttl"),
+                    col("exploded_element").getField("val").cast(BinaryType).as("value") // Use getField("val") for the reserved keyword
+            );
+        } else {
+            df = df.select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
+                    col("rowkey").as("key"),
+                    col("exploded_element.key").as("column1"),
+                    col("exploded_element.ttl").cast(IntegerType).as("ttl"),
+                    col("exploded_element").getField("val").as("value") // Use getField("val") for the reserved keyword
+            );
+        }
 
         DataFrameWriter<Row> writer = df.write().format("org.apache.cassandra.spark.sparksql.CassandraDataSink");
         writer.options(writerOptions);
         writer.option(WriterOptions.TTL.name(), TTLOption.perRow("ttl"));
         writer.option(WriterOptions.TIMESTAMP.name(), TimestampOption.constant(timestamp));
+        if (!consistency.isEmpty()) {
+            writer.option("bulk_writer_cl", consistency);
+        }
+        writer.option("allowUnquotedFieldNames", allowUnquotedFieldNames);
         writer.mode("append").save();
 
     }
@@ -262,7 +280,7 @@ public class CosTestJob {
             case "import":
 //                String import_source = "s3a://aam-s2s-traits-stage-us-east-1/2025.12.11-00.00.02/profilemerge_spp_users_optout/region=7/";
                 String import_source = "s3a://" + config.getBucket() + "/" + job.get("import_path");
-                executeWriteJob(sql, job.get("table"), import_source);
+                executeWriteJob(sql, job.get("table"), import_source, job.get("bulk_writer_cl"), job.get("allowUnquotedFieldNames"), job.get("binary").toLowerCase().equals("true"));
 
                 break;
             default:
