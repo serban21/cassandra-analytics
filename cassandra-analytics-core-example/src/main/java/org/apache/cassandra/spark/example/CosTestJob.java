@@ -177,7 +177,7 @@ public class CosTestJob {
         // So, in production we could pass the timestamp as a parameter for the EMR run
         // Assuming the EMR is run only for one S3 path. Or maybe several if they have the same timestamp
         // (generated in the same run from Keystone)
-        executeWriteJob(sql, table, location, consistency, allowUnquotedFieldNames, Instant.now().toEpochMilli());
+        executeWriteJob(sql, table, location, consistency, allowUnquotedFieldNames, binary, Instant.now().toEpochMilli());
     }
 
     private String getS3Content() {
