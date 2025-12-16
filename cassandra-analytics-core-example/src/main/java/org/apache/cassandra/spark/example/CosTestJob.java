@@ -192,7 +192,7 @@ public class CosTestJob {
 
         // should have option("fs.s3a.bucket.<bucket>.endpoint.region", "us-east-1")?
         Dataset<Row> df = sql.read().option("allowUnquotedFieldNames", "true").option("compression", "gzip")
-                .json(location)
+                .json(location);
         if (binary) {
             df = df.select(col("rowkey"), explode(col("cols")).as("exploded_element")).select(
                     col("rowkey").cast(BinaryType).as("key"),
